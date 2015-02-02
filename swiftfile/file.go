@@ -12,6 +12,8 @@ import (
 	"github.com/rackspace/gophercloud/openstack/objectstorage/v1/objects"
 )
 
+// TODO create a swift wrapper where the configuration lives instead of passing client to each file
+
 type File struct {
 	Path          string
 	Client        *gophercloud.ServiceClient
@@ -37,20 +39,20 @@ func (f *File) create(name string, content io.Reader) {
 	objects.Create(f.Client, f.ContainerName, name, content, objects.CreateOpts{})
 }
 
-func (f *File) getRemoteFileSignature(name string) (string, error) {
-	res := objects.Get(f.Client, f.ContainerName, path.Base(f.Path), objects.GetOpts{})
-	if res.Err == nil {
-		return res.Header.Get("Etag"), nil
-	}
-	return "", res.Err
-}
-
 func (f *File) shouldUpdate(name string) bool {
 	signature, err := f.getRemoteFileSignature(name)
 	if err == nil && signature == f.getFileSignature(f.Path) {
 		return false
 	}
 	return true
+}
+
+func (f *File) getRemoteFileSignature(name string) (string, error) {
+	res := objects.Get(f.Client, f.ContainerName, path.Base(f.Path), objects.GetOpts{})
+	if res.Err == nil {
+		return res.Header.Get("Etag"), nil
+	}
+	return "", res.Err
 }
 
 func (f *File) getFileSignature(path string) string {

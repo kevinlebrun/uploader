@@ -23,6 +23,8 @@ func main() {
 	username := flag.String("username", "", "OpenStack username")
 	password := flag.String("password", "", "OpenStack password")
 	tenantId := flag.String("tenant-id", "", "OpenStack Tenant ID")
+	swiftRegion := flag.String("swift-region", "", "OpenStack Swift region")
+	swiftService := flag.String("swift-service", "swift", "OpenStack Swift service")
 	pollInterval := flag.Duration("poll", 5*time.Second, "Poll interval")
 	verbose := flag.Bool("verbose", false, "Show more")
 	flag.Parse()
@@ -47,8 +49,8 @@ func main() {
 	}
 
 	client, err := openstack.NewObjectStorageV1(provider, gophercloud.EndpointOpts{
-		Region: "SBG-1",
-		Name:   "swift",
+		Region: *swiftRegion,
+		Name:   *swiftService,
 	})
 	if err != nil {
 		fmt.Println("Cannot connect to the Swift service")
