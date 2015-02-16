@@ -4,14 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 	"runtime"
 	"time"
-
-	"github.com/kevinlebrun/uploader"
-	"github.com/kevinlebrun/uploader/swiftfile"
-	"github.com/rackspace/gophercloud"
-	"github.com/rackspace/gophercloud/openstack"
 )
 
 func main() {
@@ -34,55 +28,30 @@ func main() {
 		os.Exit(1)
 	}
 
-	provider, err := openstack.AuthenticatedClient(gophercloud.AuthOptions{
+	uploader, err := NewSwiftFileUploader(SwiftFileUploaderOptions{
 		IdentityEndpoint: *identityEndpoint,
 		Username:         *username,
 		Password:         *password,
 		TenantID:         *tenantId,
-	})
-	if err != nil {
-		fmt.Println("OpenStack authentication failed")
-		if *verbose {
-			fmt.Println(err)
-		}
-		os.Exit(2)
-	}
-
-	client, err := openstack.NewObjectStorageV1(provider, gophercloud.EndpointOpts{
-		Region: *swiftRegion,
-		Name:   *swiftService,
+		SwiftRegion:      *swiftRegion,
+		SwiftService:     *swiftService,
+		ContainerName:    *containerName,
+		Verbose:          *verbose,
 	})
 	if err != nil {
 		fmt.Println("Cannot connect to the Swift service")
 		if *verbose {
 			fmt.Println(err)
 		}
-		os.Exit(3)
+		os.Exit(2)
 	}
 
-	s := uploader.NewUploader(runtime.NumCPU())
+	p := NewPool(runtime.NumCPU() * 5)
+	watcher = NewWatcher(p)
 
 	fmt.Println("Waiting for new files...")
 
-	go watchFiles(*dir, *pollInterval, func(path string) {
-		file := &swiftfile.File{Path: path, Client: client, ContainerName: *containerName}
-		if ok := s.Upload(file); ok && *verbose {
-			fmt.Printf("Upload new file: %q\n", path)
-		}
+	watcher.Watch(*dir, *pollInterval, func(path string) Job {
+		return uploader.NewJobForFile(path)
 	})
-
-	s.Wait()
-}
-
-func watchFiles(dir string, poll time.Duration, f func(string)) {
-	for {
-		filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-			if !info.IsDir() {
-				f(path)
-			}
-			return nil
-		})
-
-		time.Sleep(poll)
-	}
 }
