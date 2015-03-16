@@ -29,8 +29,20 @@ func (f *SwiftFileUploadJob) Execute() {
 	}
 
 	if !f.uploader.isExists(f.Path) {
-		file, _ := os.Open(f.Path)
-		f.uploader.create(f.Path, file)
+		file, err := os.Open(f.Path)
+		if err != nil {
+			if f.uploader.Verbose {
+				fmt.Printf("Error reading file %q\n", err)
+			}
+			return
+		}
+		err = f.uploader.create(f.Path, file)
+		if err != nil {
+			if f.uploader.Verbose {
+				fmt.Printf("Error during upload %q\n", err)
+			}
+			return
+		}
 	}
 
 	os.Remove(f.Path)
@@ -53,11 +65,12 @@ func (u *SwiftFileUploader) KeyFromPath(filepath string) string {
 	return path.Base(filepath)
 }
 
-func (u *SwiftFileUploader) create(filepath string, content io.Reader) {
-	objects.Create(u.Client, u.ContainerName, u.KeyFromPath(filepath), content, objects.CreateOpts{})
+func (u *SwiftFileUploader) create(filepath string, content io.Reader) error {
+	res := objects.Create(u.Client, u.ContainerName, u.KeyFromPath(filepath), content, objects.CreateOpts{})
 	if u.Verbose {
 		fmt.Printf("File %q uploaded\n", u.KeyFromPath(filepath))
 	}
+	return res.Err
 }
 
 func (u *SwiftFileUploader) isExists(filepath string) bool {
