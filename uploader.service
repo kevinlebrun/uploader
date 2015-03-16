@@ -1,0 +1,20 @@
+[Service]
+WorkingDirectory=/live
+ExecStart=/live/uploader \
+ --dir {{ sync_directory }} \
+ --identity-endpoint {{ os_identity_endpoint }} \
+ --username {{ os_username }} \
+ --password {{ os_password }} \
+ --tenant-id {{ os_tenant_id }} \
+ --swift-service {{ os_swift_service }} \
+ --swift-region {{ os_swift_region }} \
+ --container-name {{ os_swift_container }}
+Restart=always
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=uploader
+User=uploader
+Group=uploader
+
+[Install]
+WantedBy=multi-user.target
